@@ -1,0 +1,119 @@
+exp_root_dir: "outputs"
+name: "rigmo-vae/temporal_attn_single_node"
+tag: "${rmspace:n${data.num_frames}+kl${system.loss.lambda_kl}+lr${system.optimizer.args.lr}+temporal,_}"
+seed: 22
+
+data_type: "FullMeshMotionNPZ-datamodule"
+data:
+  root_dir: "data/rigmo_data"
+  use_split_dirs: true
+  blocklist_file: null
+  index_cache_dir: ".index_cache"
+  num_frames: 20
+  batch_size: 4
+  num_workers: 8
+  num_vertices: 5000
+  animal_filter: null
+
+system_type: "mesh-motion-autoencoder-system"
+system:
+  sample_posterior: true
+  enable_initial_visualization: false
+  freeze_skinning_epochs: 0
+  local_lr_multiplier: 4.0
+
+  shape_model_type: "mesh-motion-vae"
+  shape_model:
+    width: 512
+    heads: 8
+    num_encoder_layers: 8
+    num_tokens: 48
+    embed_dim: 128
+    motion_layers: 6
+    static_num_decoder_layers: 4
+    dynamic_num_decoder_layers: 4
+    root_num_decoder_layers: 4
+    static_num_cross_attn_layers: 8
+    dynamic_num_cross_attn_layers: 4
+    root_num_cross_attn_layers: 4
+    num_frames: 20
+    sample_posterior: true
+    lambda_reconstruction: 1.0
+    lambda_motion_smooth: 0.0
+    lambda_diversity: 0.0
+    lambda_sparsity: 0.0
+    lambda_root_smooth: 0.0
+    lambda_kl: 0.000001
+    kl_annealing_warmup_steps: 5000
+    kl_annealing_schedule: "cosine"
+    kl_min_weight: 0.0
+    kl_max_weight: 1.0
+    init_scale: 0.25
+    qkv_bias: true
+    qk_norm: false
+    use_flash: true
+    use_checkpoint: true
+    use_temporal_attn: true
+    temporal_attn_layers: 2
+    temporal_attn_heads: 8
+
+  loggers:
+    wandb:
+      enable: false
+      project: "rigmo-vae"
+      name: rigmo-vae-temporal-attn-single-node
+
+  loss:
+    lambda_reconstruction: 1.0
+    lambda_motion_smooth: 0.0
+    lambda_diversity: 0.0
+    lambda_sparsity: 0.0
+    lambda_root_smooth: 0.0
+    lambda_kl: 0.000001
+
+  optimizer:
+    name: AdamW
+    args:
+      lr: 8.9e-5
+      betas: [0.9, 0.999]
+      eps: 1.e-6
+      weight_decay: 1.e-6
+
+  scheduler:
+    name: SequentialLR
+    interval: step
+    milestones: [5000]
+    schedulers:
+      - name: LinearLR
+        interval: step
+        args:
+          start_factor: 0.1
+          total_iters: 5000
+      - name: CosineAnnealingLR
+        interval: step
+        args:
+          T_max: 195000
+          eta_min: 1.e-5
+
+trainer:
+  num_nodes: 1
+  devices: 1
+  max_steps: 200000
+  max_epochs: -1
+  check_val_every_n_epoch: 10
+  strategy: auto
+  limit_val_batches: 20
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: "norm"
+  log_every_n_steps: 50
+  num_sanity_val_steps: 1
+  enable_progress_bar: true
+  precision: 'bf16-mixed'
+  accumulate_grad_batches: 1
+
+checkpoint:
+  save_last: true
+  save_top_k: 5
+  monitor: "val/total_loss"
+  mode: "min"
+  every_n_train_steps: 1000

@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# experiment artifacts
+outputs/
+logs/
+.index_cache/
+wandb/
+*.ckpt
+*.pt
+*.log
+
+# data
+data/
+*.npz
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
