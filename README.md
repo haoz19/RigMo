@@ -7,7 +7,7 @@
   <a href="https://arxiv.org/abs/2601.06378"><img src="https://img.shields.io/badge/arXiv-2601.06378-b31b1b?style=flat-square" alt="arXiv"></a>
   <img src="https://img.shields.io/badge/python-3.10-3776ab?style=flat-square" alt="Python 3.10">
   <img src="https://img.shields.io/badge/PyTorch-2.5-ee4c2c?style=flat-square" alt="PyTorch 2.5">
-  <img src="https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square" alt="License">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-green?style=flat-square" alt="License: CC BY-NC 4.0"></a>
 </p>
 
 **Hao Zhang**<sup>1,2</sup>&nbsp;&nbsp; Jiahao Luo<sup>1,3</sup>&nbsp;&nbsp; Bohui Wan<sup>2</sup>&nbsp;&nbsp; Yizhou Zhao<sup>1,4</sup>&nbsp;&nbsp; Zongrui Li<sup>5</sup>&nbsp;&nbsp; Michael Vasilkovsky<sup>1</sup>&nbsp;&nbsp; Chaoyang Wang<sup>1</sup>&nbsp;&nbsp; Jian Wang<sup>1</sup>&nbsp;&nbsp; Narendra Ahuja<sup>2</sup>&nbsp;&nbsp; Bing Zhou<sup>1</sup>
@@ -166,6 +166,17 @@ Two configs are provided: `configs/rigmo_vae_temporal.yaml` (the paper's 8-node 
   year    = {2026}
 }
 ```
+
+## 📄 License
+
+The code in this repository is released under the
+[Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](LICENSE)
+— free for non-commercial research and academic use with attribution. For commercial
+licensing, please contact the authors.
+
+The accompanying dataset is distributed separately under its own terms (see the
+[Hugging Face dataset card](#-data)); it is derived from DeformingThings4D, Objaverse-XL,
+and TrueBones, and remains subject to those sources' original licenses.
 
 ## 🙏 Acknowledgements
 
