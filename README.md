@@ -1,126 +1,160 @@
-# RigMo-VAE
+<div align="center">
 
-Training code for the **RigMo-VAE**, the rig–motion autoencoder from:
+# RigMo: Unifying Rig and Motion Learning for Generative Animation
 
-> **RigMo: Unifying Rig and Motion Learning for Generative Animation**
-> Hao Zhang, Jiahao Luo, Bohui Wan, Yizhou Zhao, Zongrui Li, Michael Vasilkovsky, Chaoyang Wang, Jian Wang, Narendra Ahuja, Bing Zhou
-> *Snap Inc., UIUC, UC Santa Cruz, CMU, NTU*
-> Paper: https://arxiv.org/pdf/2601.06378 · Project page: https://rigmo-page.github.io/
+<p>
+  <a href="https://rigmo-page.github.io/"><img src="https://img.shields.io/badge/Project-Page-1f9bcf?style=flat-square" alt="Project Page"></a>
+  <a href="https://arxiv.org/abs/2601.06378"><img src="https://img.shields.io/badge/arXiv-2601.06378-b31b1b?style=flat-square" alt="arXiv"></a>
+  <img src="https://img.shields.io/badge/python-3.10-3776ab?style=flat-square" alt="Python 3.10">
+  <img src="https://img.shields.io/badge/PyTorch-2.5-ee4c2c?style=flat-square" alt="PyTorch 2.5">
+  <img src="https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square" alt="License">
+</p>
 
-RigMo jointly learns **rig** and **motion** directly from raw mesh sequences, with no
-human-provided skeletons or skinning weights. A dual-path topology-aware encoder
-disentangles static geometry (rigging branch) and dynamic motion (motion branch) into
-two compact latent spaces. The decoder produces explicit **Gaussian bones** (from which
-skinning weights are derived) and per-frame **SE(3)** transformations, and a Gaussian
-Linear Blend Skinning (LBS) module reconstructs the deformed mesh.
+**Hao Zhang**<sup>1,2</sup>&nbsp;&nbsp; Jiahao Luo<sup>1,3</sup>&nbsp;&nbsp; Bohui Wan<sup>2</sup>&nbsp;&nbsp; Yizhou Zhao<sup>1,4</sup>&nbsp;&nbsp; Zongrui Li<sup>5</sup>&nbsp;&nbsp; Michael Vasilkovsky<sup>1</sup>&nbsp;&nbsp; Chaoyang Wang<sup>1</sup>&nbsp;&nbsp; Jian Wang<sup>1</sup>&nbsp;&nbsp; Narendra Ahuja<sup>2</sup>&nbsp;&nbsp; Bing Zhou<sup>1</sup>
 
-This repository contains a minimal, self-contained version of the RigMo-VAE training
-pipeline, including the **temporal-attention** variant used in the paper experiments.
+<sup>1</sup>Snap Inc.&nbsp;&nbsp; <sup>2</sup>UIUC&nbsp;&nbsp; <sup>3</sup>UC Santa Cruz&nbsp;&nbsp; <sup>4</sup>CMU&nbsp;&nbsp; <sup>5</sup>NTU
 
-## Architecture
+</div>
+
+---
+
+> **TL;DR — Rigging and motion should not be learned in isolation.** RigMo is the first
+> generative framework that discovers both **rig structure** and **motion dynamics**
+> directly from raw mesh sequences, with no ground-truth rigs, skeletons, or per-sequence
+> optimization. It factorizes deformation into explicit **Gaussian bones** and
+> structure-aware motion, turning arbitrary deforming meshes into fully animatable assets.
+
+This repository contains a minimal, self-contained implementation of the **RigMo-VAE**
+training pipeline, including the **temporal-attention** variant used in the paper. The
+Motion-DiT generative stage is not included here.
+
+## ✨ Highlights
+
+- **Annotation-free rigging** — learns Gaussian bones + skinning weights from raw mesh
+  sequences, no artist-designed skeletons.
+- **Dual-path encoder** — disentangles canonical geometry (rigging branch) from temporal
+  deformation (motion branch).
+- **Explicit & interpretable** — outputs Gaussian bones and per-frame SE(3) transforms,
+  reconstructed via differentiable Gaussian LBS.
+- **Temporal attention** — optional cross-frame attention for smoother, more coherent
+  motion (`use_temporal_attn`).
+- **Scalable** — multi-node training out of the box (reproduces the 8-node × 8-GPU run).
+
+## 🧠 Architecture
 
 ```
-vertices [B, T, N, 3]
-        │
-        ▼
-TopologyAwareEncoder ── rigging branch (V0)      → V0 anchors  (Gaussian bones)
-                     └─ motion  branch (V_delta)  → bone-motion features
-        │
-        ├─ StaticParamDecoder        → Gaussian bones  G = [Δc, s, q]
-        ├─ DynamicVAEEncoder/Decoder → per-bone local SE(3)  (latent z, KL)
-        └─ RootVAEEncoder/Decoder    → global root SE(3)      (latent z, KL)
-        │  (optional TemporalTransformerBlock mixes information across frames)
-        ▼
-GaussianSkinningLBS → animated_vertices [B, T-1, N, 3]
+                    vertices  V ∈ [B, T, N, 3]
+                              │
+              ┌───────────────┴────────────────┐
+              ▼                                 ▼
+      Rigging branch (V₀)               Motion branch (Vₜ − Vₜ₋₁)
+   topology-aware self-attn          temporal–spatial self-attn
+              │                                 │
+   FPS → K bone tokens                          │
+              ▼                                 ▼
+   ┌──────────────────────┐        ┌──────────────────────────────┐
+   │ StaticParamDecoder   │        │ Dynamic VAE  (local SE(3), z) │
+   │ → Gaussian bones G   │        │ Root    VAE  (global SE(3), z)│
+   │   G = [Δc, s, q]     │        │ (+ optional TemporalAttn)     │
+   └──────────┬───────────┘        └───────────────┬──────────────┘
+              └───────────────┬───────────────────┘
+                              ▼
+              GaussianSkinningLBS  →  V̂ ∈ [B, T−1, N, 3]
 ```
 
-Key modules:
-- `step1x3d_geometry/models/autoencoders/mesh_motion_vae.py` — encoder, decoders, LBS, losses.
-- `step1x3d_geometry/systems/mesh_motion_autoencoder.py` — Lightning training/val/test system.
-- `step1x3d_geometry/datamodules/mesh_motion.py` — dataset / data module.
+| File | Role |
+|------|------|
+| `step1x3d_geometry/models/autoencoders/mesh_motion_vae.py` | Encoder, decoders, Gaussian LBS, losses |
+| `step1x3d_geometry/systems/mesh_motion_autoencoder.py` | Lightning training / val / test system |
+| `step1x3d_geometry/datamodules/mesh_motion.py` | Dataset + data module |
+| `train.py` | Entrypoint (`--train` / `--validate` / `--test` / `--export`) |
 
-## Installation
+## 🚀 Installation
 
 ```bash
 conda create -n rigmo python=3.10 -y
 conda activate rigmo
 
-# Install a PyTorch build that matches your CUDA version, e.g. CUDA 12.4:
+# Install a PyTorch build matching your CUDA version, e.g. CUDA 12.4:
 pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
 
 pip install -r requirements.txt
 ```
 
-## Data format
+## 📦 Dataset
 
-The data module (`FullMeshMotionNPZ-datamodule`) expects a root directory of sequences,
-where each sequence is a directory of per-frame `.npz` files:
+RigMo-VAE trains on sequences of deforming meshes (DeformingThings4D, Objaverse-XL renders,
+TrueBones). The data module (`FullMeshMotionNPZ-datamodule`) expects a root directory of
+sequences, each a directory of per-frame `.npz` files:
 
 ```
 data/rigmo_data/
 ├── <sequence_name>/
-│   ├── frame_0000.npz       # arrays: vertices [N, 3], neighbor_idx [N, k]
+│   ├── frame_0000.npz        # arrays:  vertices [N, 3]  ·  neighbor_idx [N, k]
 │   ├── frame_0001.npz
 │   └── ...
-├── val/                     # reserved sub-dir used for validation
-│   └── <sequence_name>/ ...
-└── test/                    # reserved sub-dir used for testing
-    └── <sequence_name>/ ...
+├── val/                      # reserved sub-dir for validation
+└── test/                     # reserved sub-dir for testing
 ```
 
 Each `frame_*.npz` stores:
-- `vertices`: `float32` array of shape `[N, 3]`.
-- `neighbor_idx`: `int` array of shape `[N, k]` — per-vertex neighbor indices (mesh
-  topology) used by the topology-aware attention.
+
+| Key | Shape | Description |
+|-----|-------|-------------|
+| `vertices` | `[N, 3]` `float32` | per-frame vertex positions |
+| `neighbor_idx` | `[N, k]` `int` | per-vertex mesh neighbors (used by topology-aware attention) |
 
 Sequences are normalized per-sequence so the first frame's bounding box maps to a unit
-cube centered at the origin. Point this at your dataset by editing `data.root_dir` in the
-config.
+cube centered at the origin. Set `data.root_dir` in the config to your dataset path.
 
-## Training
+> 📥 **Preprocessed data:** a ready-to-train copy will be released on the Hugging Face Hub.
+> _(Link coming soon.)_
 
-Single node (1 GPU, good for a quick sanity run):
+## 🏋️ Training
+
+**Single node, 1 GPU** (quick sanity run):
 
 ```bash
 bash scripts/train_single_node.sh configs/rigmo_vae_temporal_single_node.yaml 1
 ```
 
-Single node, multiple GPUs (e.g. 8):
+**Single node, multiple GPUs** (e.g. 8):
 
 ```bash
 bash scripts/train_single_node.sh configs/rigmo_vae_temporal_single_node.yaml 8
 ```
 
-Multi-node via SLURM (reproduces the 8-node × 8-GPU run from the paper):
+**Multi-node via SLURM** (reproduces the 8-node × 8-GPU run from the paper):
 
 ```bash
 sbatch scripts/run_train_slurm.sh configs/rigmo_vae_temporal.yaml
 ```
 
-You can also call the entrypoint directly:
+Direct invocation:
 
 ```bash
 python train.py --config configs/rigmo_vae_temporal_single_node.yaml --train
+# other modes: --validate / --test / --export   (add --resume path/to/ckpt.ckpt)
 ```
 
-Other modes: `--validate`, `--test`, `--export` (use `--resume path/to/ckpt.ckpt` to load
-a checkpoint).
+**Logging.** TensorBoard + CSV logs are written under `outputs/` by default. To enable
+Weights & Biases, set `system.loggers.wandb.enable: true` in the config and run
+`wandb login`.
 
-### Logging
+## ⚙️ Key configuration
 
-TensorBoard and CSV logging are enabled by default and written under `outputs/`.
-Weights & Biases is disabled by default; set `system.loggers.wandb.enable: true` in the
-config and run `wandb login` to enable it.
+| Field | Meaning |
+|-------|---------|
+| `system.shape_model.use_temporal_attn` | enable cross-frame temporal attention (the *temporal-attn* variant) |
+| `system.shape_model.num_tokens` | number of Gaussian bones `K` |
+| `system.shape_model.use_checkpoint` | gradient checkpointing to save memory |
+| `data.num_frames` / `shape_model.num_frames` | sequence length (must match) |
+| `trainer.num_nodes` / `trainer.devices` | distributed layout |
 
-## Configuration notes
+Two configs are provided: `configs/rigmo_vae_temporal.yaml` (the paper's 8-node setup) and
+`configs/rigmo_vae_temporal_single_node.yaml` (single-node quick start).
 
-- `system.shape_model.use_temporal_attn: true` enables cross-frame temporal attention
-  (the "temporal-attn" variant). Set to `false` for the baseline.
-- `data.num_frames` and `system.shape_model.num_frames` must match.
-- `system.shape_model.num_tokens` is the number of Gaussian bones `K`.
-- `system.shape_model.use_checkpoint: true` enables gradient checkpointing to save memory.
-
-## Citation
+## 📚 Citation
 
 ```bibtex
 @article{zhang2026rigmo,
@@ -132,3 +166,9 @@ config and run `wandb login` to enable it.
   year    = {2026}
 }
 ```
+
+## 🙏 Acknowledgements
+
+The model code builds on the [Step1X-3D](https://github.com/stepfun-ai/Step1X-3D) geometry
+framework. We thank the authors of DeformingThings4D, Objaverse-XL, and TrueBones for their
+datasets.
