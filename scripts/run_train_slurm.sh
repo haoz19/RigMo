@@ -37,9 +37,14 @@ echo "=========================================="
 
 export LOGLEVEL=INFO
 export NCCL_ASYNC_ERROR_HANDLING=1
+export NCCL_TIMEOUT=1800
 
 srun bash -c "
 cd '$REPO_DIR'
+# train.py reads CUDA_VISIBLE_DEVICES to determine the per-node GPU count, so it
+# MUST list all GPUs on the node (torchrun does not set this itself).
+export CUDA_VISIBLE_DEVICES=\$(seq -s, 0 \$(( $NGPUS - 1 )))
+echo \"[\$(hostname)] CUDA_VISIBLE_DEVICES=\$CUDA_VISIBLE_DEVICES\"
 torchrun \
     --nproc_per_node='$NGPUS' \
     --nnodes='$NNODES' \
