@@ -84,31 +84,52 @@ pip install -r requirements.txt
 ## 📦 Dataset
 
 RigMo-VAE trains on sequences of deforming meshes (DeformingThings4D, Objaverse-XL renders,
-TrueBones). The data module (`FullMeshMotionNPZ-datamodule`) expects a root directory of
-sequences, each a directory of per-frame `.npz` files:
+TrueBones). A **ready-to-train preprocessed copy** (~18,985 sequences, ~534k frames) is
+released on the Hugging Face Hub:
+
+📥 **[huggingface.co/datasets/haoz19/RigMo-data](https://huggingface.co/datasets/haoz19/RigMo-data)**
+&nbsp;(gated — click *Request access*; approved instantly-ish, then download)
+
+### Download & extract
+
+```bash
+pip install -U "huggingface_hub[cli]"
+huggingface-cli login   # once, with a token that has access to the gated dataset
+
+# 1. Download the archives (~28 GB)
+huggingface-cli download haoz19/RigMo-data \
+  --repo-type dataset --local-dir rigmo_data_archives
+
+# 2. Extract into ./data/rigmo_data  (needs `zstd` + `tar`)
+mkdir -p data/rigmo_data
+for f in rigmo_data_archives/*.tar.zst; do
+  tar -I zstd -xf "$f" -C data/rigmo_data
+done
+```
+
+This yields the directory layout the data module (`FullMeshMotionNPZ-datamodule`) expects:
 
 ```
 data/rigmo_data/
-├── <sequence_name>/
-│   ├── frame_0000.npz        # arrays:  vertices [N, 3]  ·  neighbor_idx [N, k]
-│   ├── frame_0001.npz
-│   └── ...
+├── deformingthings4d/        # sequences derived from DeformingThings4D
+├── objxl_rendered_*/         # Objaverse-XL render shards (8 dirs)
 ├── val/                      # reserved sub-dir for validation
-└── test/                     # reserved sub-dir for testing
+└── test/                     # reserved sub-dir for testing (optional; falls back to val)
+    └── <sequence_name>/
+        ├── frame_0000.npz    # arrays:  vertices [N, 3]  ·  neighbor_idx [N, k]
+        └── ...
 ```
 
 Each `frame_*.npz` stores:
 
 | Key | Shape | Description |
 |-----|-------|-------------|
-| `vertices` | `[N, 3]` `float32` | per-frame vertex positions |
-| `neighbor_idx` | `[N, k]` `int` | per-vertex mesh neighbors (used by topology-aware attention) |
+| `vertices` | `[N, 3]` `float32` | per-frame vertex positions (`N = 5000`) |
+| `neighbor_idx` | `[N, k]` `int64` | per-vertex mesh neighbors (used by topology-aware attention) |
 
-Sequences are normalized per-sequence so the first frame's bounding box maps to a unit
-cube centered at the origin. Set `data.root_dir` in the config to your dataset path.
-
-> 📥 **Preprocessed data:** a ready-to-train copy will be released on the Hugging Face Hub.
-> _(Link coming soon.)_
+Sequences are normalized at load time so the first frame's bounding box maps to a unit
+cube centered at the origin. The default config already points to `data/rigmo_data`; override
+with `data.root_dir=/your/path` if you extract elsewhere.
 
 ## 🏋️ Training
 
@@ -175,7 +196,7 @@ The code in this repository is released under the
 licensing, please contact the authors.
 
 The accompanying dataset is distributed separately under its own terms (see the
-[Hugging Face dataset card](#-data)); it is derived from DeformingThings4D, Objaverse-XL,
+[Hugging Face dataset card](https://huggingface.co/datasets/haoz19/RigMo-data)); it is derived from DeformingThings4D, Objaverse-XL,
 and TrueBones, and remains subject to those sources' original licenses.
 
 ## 🙏 Acknowledgements
