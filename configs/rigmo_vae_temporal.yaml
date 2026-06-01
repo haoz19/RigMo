@@ -13,7 +13,7 @@ data:
   # `neighbor_idx` [N, k]. `val` / `test` are reserved sub-directories.
   root_dir: "data/rigmo_data"
   use_split_dirs: true
-  blocklist_file: null            # optional path to a list of sequence names to skip
+  blocklist_file: "nan_blocklist.txt"  # sequences skipped in the paper run (produced NaN); set null to disable
   index_cache_dir: ".index_cache" # caches the recursive directory scan
   num_frames: 20
   batch_size: 4
