@@ -5,7 +5,7 @@ Training code for the **RigMo-VAE**, the rig–motion autoencoder from:
 > **RigMo: Unifying Rig and Motion Learning for Generative Animation**
 > Hao Zhang, Jiahao Luo, Bohui Wan, Yizhou Zhao, Zongrui Li, Michael Vasilkovsky, Chaoyang Wang, Jian Wang, Narendra Ahuja, Bing Zhou
 > *Snap Inc., UIUC, UC Santa Cruz, CMU, NTU*
-> Paper: https://arxiv.org/pdf/2601.06378 · Project page: https://RigMo-Page.github.io
+> Paper: https://arxiv.org/pdf/2601.06378 · Project page: https://rigmo-page.github.io/
 
 RigMo jointly learns **rig** and **motion** directly from raw mesh sequences, with no
 human-provided skeletons or skinning weights. A dual-path topology-aware encoder
