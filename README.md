@@ -3,7 +3,7 @@
 # RigMo: Unifying Rig and Motion Learning for Generative Animation
 
 <p>
-  <a href="https://rigmo-page.github.io/"><img src="https://img.shields.io/badge/Project-Page-1f9bcf?style=flat-square" alt="Project Page"></a>
+  <a href="https://haoz19.github.io/RigMo-page/"><img src="https://img.shields.io/badge/Project-Page-1f9bcf?style=flat-square" alt="Project Page"></a>
   <a href="https://arxiv.org/abs/2601.06378"><img src="https://img.shields.io/badge/arXiv-2601.06378-b31b1b?style=flat-square" alt="arXiv"></a>
   <img src="https://img.shields.io/badge/python-3.10-3776ab?style=flat-square" alt="Python 3.10">
   <img src="https://img.shields.io/badge/PyTorch-2.5-ee4c2c?style=flat-square" alt="PyTorch 2.5">
